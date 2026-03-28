@@ -1,0 +1,33 @@
+name: Build and Push to Docker Hub
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  build-and-push:
+    runs-on: [self-hosted, Linux, X64, devops]
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Build and push image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: true
+          tags: |
+            ${{ secrets.DOCKERHUB_USERNAME }}/match3-k8s:latest
+            ${{ secrets.DOCKERHUB_USERNAME }}/match3-k8s:v${{ github.run_number }}
+
+      - name: Deploy to Kubernetes
+        run: |
+          kubectl set image deployment/match3 match3=${{ secrets.DOCKERHUB_USERNAME }}/match3-k8s:v${{ github.run_number }} -n match3 --context k8s-vanilla
