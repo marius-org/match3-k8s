@@ -1,0 +1,754 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>FRUIT BLAST</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;700;800;900&family=Righteous&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg1: #0f0c29;
+      --bg2: #302b63;
+      --bg3: #24243e;
+      --card: rgba(255,255,255,0.07);
+      --border: rgba(255,255,255,0.12);
+      --text: #ffffff;
+      --sub: rgba(255,255,255,0.6);
+      --strawberry: #ff4d6d;
+      --orange: #ff9f1c;
+      --lemon: #ffed66;
+      --grape: #c77dff;
+      --watermelon: #06d6a0;
+      --cherry: #ef233c;
+      --radius: 20px;
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      min-height: 100vh;
+      background: linear-gradient(135deg, var(--bg1), var(--bg2), var(--bg3));
+      font-family: 'Nunito', sans-serif;
+      color: var(--text);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+      overflow-x: hidden;
+    }
+
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background:
+        radial-gradient(circle at 20% 20%, rgba(199,125,255,0.15) 0%, transparent 50%),
+        radial-gradient(circle at 80% 80%, rgba(6,214,160,0.15) 0%, transparent 50%),
+        radial-gradient(circle at 50% 50%, rgba(255,159,28,0.08) 0%, transparent 60%);
+      pointer-events: none;
+    }
+
+    h1 {
+      font-family: 'Righteous', cursive;
+      font-size: clamp(2rem, 5vw, 3.5rem);
+      background: linear-gradient(135deg, #ff4d6d, #ff9f1c, #ffed66, #06d6a0, #c77dff);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      margin-bottom: 24px;
+      letter-spacing: 3px;
+      filter: drop-shadow(0 0 30px rgba(255,159,28,0.4));
+      animation: titlePulse 3s ease-in-out infinite;
+    }
+
+    @keyframes titlePulse {
+      0%, 100% { filter: drop-shadow(0 0 20px rgba(255,159,28,0.3)); }
+      50% { filter: drop-shadow(0 0 40px rgba(199,125,255,0.6)); }
+    }
+
+    .game-wrapper {
+      display: flex;
+      gap: 20px;
+      align-items: flex-start;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+
+    /* BOARD */
+    .board-container {
+      position: relative;
+    }
+
+    #board {
+      display: grid;
+      grid-template-columns: repeat(8, 60px);
+      grid-template-rows: repeat(8, 60px);
+      gap: 4px;
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 10px;
+      backdrop-filter: blur(20px);
+      box-shadow: 0 20px 60px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.1);
+    }
+
+    .cell {
+      width: 60px;
+      height: 60px;
+      border-radius: 14px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 32px;
+      cursor: pointer;
+      transition: transform 0.15s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.15s ease;
+      position: relative;
+      user-select: none;
+      background: rgba(255,255,255,0.06);
+      border: 1px solid rgba(255,255,255,0.08);
+    }
+
+    .cell:hover {
+      transform: scale(1.1);
+      z-index: 2;
+    }
+
+    .cell.selected {
+      transform: scale(1.15);
+      box-shadow: 0 0 0 3px white, 0 0 20px rgba(255,255,255,0.5);
+      z-index: 3;
+      background: rgba(255,255,255,0.15);
+    }
+
+    .cell.matched {
+      animation: matchPop 0.4s cubic-bezier(0.36, 0.07, 0.19, 0.97) forwards;
+    }
+
+    .cell.falling {
+      animation: fallIn 0.3s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+    }
+
+    .cell.hint {
+      animation: hintBounce 0.6s ease infinite alternate;
+    }
+
+    @keyframes matchPop {
+      0% { transform: scale(1); opacity: 1; }
+      50% { transform: scale(1.4); opacity: 0.8; }
+      100% { transform: scale(0); opacity: 0; }
+    }
+
+    @keyframes fallIn {
+      from { transform: translateY(-60px) scale(0.8); opacity: 0; }
+      to { transform: translateY(0) scale(1); opacity: 1; }
+    }
+
+    @keyframes hintBounce {
+      from { transform: scale(1); }
+      to { transform: scale(1.15); box-shadow: 0 0 15px rgba(255,255,255,0.4); }
+    }
+
+    /* Score popup */
+    .score-popup {
+      position: absolute;
+      font-family: 'Righteous', cursive;
+      font-size: 1.4rem;
+      font-weight: 900;
+      color: #ffed66;
+      pointer-events: none;
+      animation: floatUp 0.8s ease forwards;
+      text-shadow: 0 0 10px rgba(255,237,102,0.8);
+      z-index: 100;
+    }
+
+    @keyframes floatUp {
+      0% { transform: translateY(0) scale(1); opacity: 1; }
+      100% { transform: translateY(-60px) scale(1.3); opacity: 0; }
+    }
+
+    /* SIDE PANEL */
+    .side-panel {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      width: 180px;
+    }
+
+    .panel-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 16px;
+      backdrop-filter: blur(20px);
+    }
+
+    .panel-card h3 {
+      font-size: 0.7rem;
+      font-weight: 800;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      color: var(--sub);
+      margin-bottom: 6px;
+    }
+
+    .panel-card .value {
+      font-family: 'Righteous', cursive;
+      font-size: 2rem;
+      background: linear-gradient(135deg, #ff9f1c, #ffed66);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    /* Progress bar for moves */
+    .moves-bar {
+      height: 8px;
+      background: rgba(255,255,255,0.1);
+      border-radius: 99px;
+      margin-top: 8px;
+      overflow: hidden;
+    }
+
+    .moves-fill {
+      height: 100%;
+      border-radius: 99px;
+      background: linear-gradient(90deg, #06d6a0, #c77dff);
+      transition: width 0.3s ease;
+    }
+
+    /* Leaderboard */
+    .scores-list {
+      list-style: none;
+      margin-top: 8px;
+    }
+
+    .scores-list li {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 5px 0;
+      border-bottom: 1px solid var(--border);
+      font-size: 0.75rem;
+    }
+
+    .scores-list li:last-child { border-bottom: none; }
+
+    .scores-list .rank {
+      font-weight: 800;
+      color: var(--sub);
+      width: 20px;
+    }
+
+    .scores-list .name {
+      flex: 1;
+      padding: 0 6px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .scores-list .pts {
+      font-family: 'Righteous', cursive;
+      font-size: 0.85rem;
+      background: linear-gradient(135deg, #ff9f1c, #ffed66);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    /* Buttons */
+    .btn {
+      width: 100%;
+      padding: 12px;
+      border: none;
+      border-radius: 12px;
+      font-family: 'Nunito', sans-serif;
+      font-weight: 800;
+      font-size: 0.9rem;
+      cursor: pointer;
+      letter-spacing: 1px;
+      transition: all 0.2s;
+    }
+
+    .btn-primary {
+      background: linear-gradient(135deg, #ff4d6d, #ff9f1c);
+      color: white;
+      box-shadow: 0 4px 20px rgba(255,77,109,0.4);
+    }
+
+    .btn-primary:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 30px rgba(255,77,109,0.5);
+    }
+
+    .btn-secondary {
+      background: rgba(255,255,255,0.1);
+      color: white;
+      border: 1px solid var(--border);
+    }
+
+    .btn-secondary:hover {
+      background: rgba(255,255,255,0.15);
+    }
+
+    /* OVERLAY */
+    #overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(15,12,41,0.92);
+      backdrop-filter: blur(10px);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 16px;
+      z-index: 50;
+    }
+
+    #overlay h2 {
+      font-family: 'Righteous', cursive;
+      font-size: 2.5rem;
+      background: linear-gradient(135deg, #ff4d6d, #ff9f1c, #ffed66);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    #overlay p {
+      color: var(--sub);
+      font-size: 0.9rem;
+      font-weight: 700;
+      letter-spacing: 1px;
+    }
+
+    #overlay input {
+      background: rgba(255,255,255,0.08);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      color: white;
+      font-family: 'Nunito', sans-serif;
+      font-size: 1rem;
+      font-weight: 700;
+      padding: 12px 20px;
+      outline: none;
+      text-align: center;
+      width: 220px;
+      transition: border-color 0.2s;
+    }
+
+    #overlay input:focus {
+      border-color: rgba(255,159,28,0.6);
+      box-shadow: 0 0 20px rgba(255,159,28,0.2);
+    }
+
+    #overlay .btn {
+      width: 220px;
+    }
+
+    #final-score {
+      font-family: 'Righteous', cursive;
+      font-size: 3rem;
+      background: linear-gradient(135deg, #06d6a0, #c77dff);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    /* Fruit colors per type */
+    .f0 { background: linear-gradient(135deg, rgba(255,77,109,0.25), rgba(255,77,109,0.1)); border-color: rgba(255,77,109,0.3); }
+    .f1 { background: linear-gradient(135deg, rgba(255,159,28,0.25), rgba(255,159,28,0.1)); border-color: rgba(255,159,28,0.3); }
+    .f2 { background: linear-gradient(135deg, rgba(255,237,102,0.25), rgba(255,237,102,0.1)); border-color: rgba(255,237,102,0.3); }
+    .f3 { background: linear-gradient(135deg, rgba(199,125,255,0.25), rgba(199,125,255,0.1)); border-color: rgba(199,125,255,0.3); }
+    .f4 { background: linear-gradient(135deg, rgba(6,214,160,0.25), rgba(6,214,160,0.1)); border-color: rgba(6,214,160,0.3); }
+    .f5 { background: linear-gradient(135deg, rgba(239,35,60,0.25), rgba(239,35,60,0.1)); border-color: rgba(239,35,60,0.3); }
+  </style>
+</head>
+<body>
+
+<h1>🍓 FRUIT BLAST</h1>
+
+<div class="game-wrapper">
+  <div class="board-container">
+    <div id="board"></div>
+  </div>
+
+  <div class="side-panel">
+    <div class="panel-card">
+      <h3>Score</h3>
+      <div class="value" id="score-display">0</div>
+    </div>
+
+    <div class="panel-card">
+      <h3>Level</h3>
+      <div class="value" id="level-display">1</div>
+    </div>
+
+    <div class="panel-card">
+      <h3>Moves Left</h3>
+      <div class="value" id="moves-display">30</div>
+      <div class="moves-bar">
+        <div class="moves-fill" id="moves-fill" style="width:100%"></div>
+      </div>
+    </div>
+
+    <div class="panel-card">
+      <h3>🏆 Top 10</h3>
+      <ul class="scores-list" id="scores-list">
+        <li><span class="rank">#</span><span class="name">---</span></li>
+      </ul>
+    </div>
+
+    <button class="btn btn-secondary" id="hint-btn">💡 Hint</button>
+    <button class="btn btn-secondary" id="shuffle-btn">🔀 Shuffle</button>
+  </div>
+</div>
+
+<!-- Overlay -->
+<div id="overlay">
+  <h2 id="overlay-title">FRUIT BLAST</h2>
+  <p id="overlay-sub">ENTER YOUR NAME TO PLAY</p>
+  <div id="final-score" style="display:none"></div>
+  <input id="player-name" type="text" maxlength="12" placeholder="Your name..." />
+  <button class="btn btn-primary" id="start-btn">START GAME</button>
+</div>
+
+<script>
+const COLS = 8, ROWS = 8;
+const FRUITS = ['🍓','🍊','🍋','🍇','🍉','🍒'];
+const MAX_MOVES = 30;
+const POINTS_PER_MATCH = [0, 0, 0, 100, 250, 500, 1000];
+
+let board = [], selected = null, score = 0, level = 1, moves = MAX_MOVES;
+let playerName = '', gameOver = false, animating = false;
+
+// --- Board Logic ---
+function createBoard() {
+  board = [];
+  for (let r = 0; r < ROWS; r++) {
+    board[r] = [];
+    for (let c = 0; c < COLS; c++) {
+      board[r][c] = randomFruit(r, c);
+    }
+  }
+  // Ensure no initial matches
+  let tries = 0;
+  while (findMatches().length > 0 && tries < 100) {
+    for (let r = 0; r < ROWS; r++)
+      for (let c = 0; c < COLS; c++)
+        board[r][c] = Math.floor(Math.random() * FRUITS.length);
+    tries++;
+  }
+}
+
+function randomFruit(r, c) {
+  let fruit;
+  do {
+    fruit = Math.floor(Math.random() * FRUITS.length);
+  } while (
+    (c >= 2 && board[r][c-1] === fruit && board[r][c-2] === fruit) ||
+    (r >= 2 && board[r-1] && board[r-1][c] === fruit && board[r-2] && board[r-2][c] === fruit)
+  );
+  return fruit;
+}
+
+function findMatches() {
+  const matched = new Set();
+  // Horizontal
+  for (let r = 0; r < ROWS; r++) {
+    for (let c = 0; c < COLS - 2; c++) {
+      const f = board[r][c];
+      if (f !== null && f === board[r][c+1] && f === board[r][c+2]) {
+        let end = c + 2;
+        while (end + 1 < COLS && board[r][end+1] === f) end++;
+        for (let i = c; i <= end; i++) matched.add(`${r}-${i}`);
+      }
+    }
+  }
+  // Vertical
+  for (let c = 0; c < COLS; c++) {
+    for (let r = 0; r < ROWS - 2; r++) {
+      const f = board[r][c];
+      if (f !== null && f === board[r+1][c] && f === board[r+2][c]) {
+        let end = r + 2;
+        while (end + 1 < ROWS && board[end+1][c] === f) end++;
+        for (let i = r; i <= end; i++) matched.add(`${i}-${c}`);
+      }
+    }
+  }
+  return [...matched];
+}
+
+function hasValidMoves() {
+  for (let r = 0; r < ROWS; r++) {
+    for (let c = 0; c < COLS; c++) {
+      if (c + 1 < COLS) {
+        swap(r, c, r, c+1);
+        if (findMatches().length > 0) { swap(r, c, r, c+1); return true; }
+        swap(r, c, r, c+1);
+      }
+      if (r + 1 < ROWS) {
+        swap(r, c, r+1, c);
+        if (findMatches().length > 0) { swap(r, c, r+1, c); return true; }
+        swap(r, c, r+1, c);
+      }
+    }
+  }
+  return false;
+}
+
+function swap(r1, c1, r2, c2) {
+  [board[r1][c1], board[r2][c2]] = [board[r2][c2], board[r1][c1]];
+}
+
+// --- Rendering ---
+function render() {
+  const boardEl = document.getElementById('board');
+  boardEl.innerHTML = '';
+  for (let r = 0; r < ROWS; r++) {
+    for (let c = 0; c < COLS; c++) {
+      const cell = document.createElement('div');
+      cell.className = `cell f${board[r][c]}`;
+      cell.dataset.r = r;
+      cell.dataset.c = c;
+      if (board[r][c] !== null) cell.textContent = FRUITS[board[r][c]];
+      if (selected && selected[0] === r && selected[1] === c) cell.classList.add('selected');
+      cell.addEventListener('click', () => onCellClick(r, c));
+      boardEl.appendChild(cell);
+    }
+  }
+  document.getElementById('score-display').textContent = score.toLocaleString();
+  document.getElementById('level-display').textContent = level;
+  document.getElementById('moves-display').textContent = moves;
+  document.getElementById('moves-fill').style.width = `${(moves / MAX_MOVES) * 100}%`;
+}
+
+function getCell(r, c) {
+  return document.querySelector(`[data-r="${r}"][data-c="${c}"]`);
+}
+
+// --- Game Logic ---
+async function onCellClick(r, c) {
+  if (animating || gameOver || moves <= 0) return;
+
+  if (!selected) {
+    selected = [r, c];
+    render();
+    return;
+  }
+
+  const [sr, sc] = selected;
+  if (sr === r && sc === c) {
+    selected = null;
+    render();
+    return;
+  }
+
+  // Must be adjacent
+  const adjacent = (Math.abs(sr-r) + Math.abs(sc-c)) === 1;
+  if (!adjacent) {
+    selected = [r, c];
+    render();
+    return;
+  }
+
+  selected = null;
+  animating = true;
+
+  swap(sr, sc, r, c);
+  const matches = findMatches();
+
+  if (matches.length === 0) {
+    // Invalid move — swap back
+    swap(sr, sc, r, c);
+    animating = false;
+    render();
+    return;
+  }
+
+  moves--;
+  render();
+  await processMatches();
+  animating = false;
+
+  if (moves <= 0) {
+    endGame();
+  } else if (!hasValidMoves()) {
+    shuffleBoard();
+  }
+}
+
+async function processMatches() {
+  let matches = findMatches();
+  while (matches.length > 0) {
+    // Animate matched cells
+    matches.forEach(key => {
+      const [r, c] = key.split('-').map(Number);
+      const cell = getCell(r, c);
+      if (cell) cell.classList.add('matched');
+    });
+    await delay(400);
+
+    // Score
+    const pts = POINTS_PER_MATCH[Math.min(matches.length, 6)] * level;
+    score += pts;
+    showScorePopup(pts, matches);
+
+    // Remove matched
+    matches.forEach(key => {
+      const [r, c] = key.split('-').map(Number);
+      board[r][c] = null;
+    });
+
+    // Drop fruits down
+    for (let c = 0; c < COLS; c++) {
+      let empty = ROWS - 1;
+      for (let r = ROWS - 1; r >= 0; r--) {
+        if (board[r][c] !== null) {
+          board[empty][c] = board[r][c];
+          if (empty !== r) board[r][c] = null;
+          empty--;
+        }
+      }
+      for (let r = empty; r >= 0; r--) {
+        board[r][c] = Math.floor(Math.random() * FRUITS.length);
+      }
+    }
+
+    render();
+    await delay(300);
+    matches = findMatches();
+  }
+
+  // Level up every 1000 points
+  const newLevel = Math.floor(score / 1000) + 1;
+  if (newLevel > level) {
+    level = newLevel;
+    moves = Math.min(moves + 5, MAX_MOVES); // bonus moves on level up
+    render();
+  }
+}
+
+function showScorePopup(pts, matches) {
+  if (pts === 0) return;
+  const key = matches[Math.floor(matches.length / 2)];
+  const [r, c] = key.split('-').map(Number);
+  const cell = getCell(r, c);
+  if (!cell) return;
+  const rect = cell.getBoundingClientRect();
+  const boardRect = document.getElementById('board').getBoundingClientRect();
+  const popup = document.createElement('div');
+  popup.className = 'score-popup';
+  popup.textContent = `+${pts}`;
+  popup.style.left = `${rect.left - boardRect.left + 10}px`;
+  popup.style.top = `${rect.top - boardRect.top}px`;
+  document.querySelector('.board-container').appendChild(popup);
+  setTimeout(() => popup.remove(), 800);
+}
+
+function shuffleBoard() {
+  const flat = board.flat().filter(f => f !== null);
+  for (let i = flat.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [flat[i], flat[j]] = [flat[j], flat[i]];
+  }
+  let idx = 0;
+  for (let r = 0; r < ROWS; r++)
+    for (let c = 0; c < COLS; c++)
+      board[r][c] = flat[idx++];
+  render();
+  if (!hasValidMoves()) shuffleBoard();
+}
+
+function showHint() {
+  for (let r = 0; r < ROWS; r++) {
+    for (let c = 0; c < COLS; c++) {
+      if (c + 1 < COLS) {
+        swap(r, c, r, c+1);
+        if (findMatches().length > 0) {
+          swap(r, c, r, c+1);
+          const c1 = getCell(r, c);
+          const c2 = getCell(r, c+1);
+          if (c1) c1.classList.add('hint');
+          if (c2) c2.classList.add('hint');
+          setTimeout(() => { if(c1) c1.classList.remove('hint'); if(c2) c2.classList.remove('hint'); }, 1200);
+          return;
+        }
+        swap(r, c, r, c+1);
+      }
+      if (r + 1 < ROWS) {
+        swap(r, c, r+1, c);
+        if (findMatches().length > 0) {
+          swap(r, c, r+1, c);
+          const c1 = getCell(r, c);
+          const c2 = getCell(r+1, c);
+          if (c1) c1.classList.add('hint');
+          if (c2) c2.classList.add('hint');
+          setTimeout(() => { if(c1) c1.classList.remove('hint'); if(c2) c2.classList.remove('hint'); }, 1200);
+          return;
+        }
+        swap(r, c, r+1, c);
+      }
+    }
+  }
+}
+
+function delay(ms) {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+// --- Game Flow ---
+function startGame() {
+  playerName = document.getElementById('player-name').value.trim() || 'PLAYER';
+  score = 0; level = 1; moves = MAX_MOVES; gameOver = false; selected = null;
+  document.getElementById('overlay').style.display = 'none';
+  document.getElementById('final-score').style.display = 'none';
+  createBoard();
+  render();
+  loadScores();
+}
+
+async function endGame() {
+  gameOver = true;
+  try {
+    await fetch('/scores', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({ player: playerName, score, level })
+    });
+  } catch(e) {}
+  await loadScores();
+  document.getElementById('overlay-title').textContent = 'GAME OVER!';
+  document.getElementById('overlay-sub').textContent = 'YOUR SCORE';
+  document.getElementById('final-score').style.display = 'block';
+  document.getElementById('final-score').textContent = score.toLocaleString();
+  document.getElementById('start-btn').textContent = 'PLAY AGAIN';
+  document.getElementById('overlay').style.display = 'flex';
+}
+
+async function loadScores() {
+  try {
+    const res = await fetch('/scores');
+    const data = await res.json();
+    const list = document.getElementById('scores-list');
+    list.innerHTML = data.length ? data.map((s, i) =>
+      `<li>
+        <span class="rank">#${i+1}</span>
+        <span class="name">${s.player.substring(0,8)}</span>
+        <span class="pts">${s.score.toLocaleString()}</span>
+      </li>`
+    ).join('') : '<li><span class="name">No scores yet</span></li>';
+  } catch(e) {}
+}
+
+// --- Events ---
+document.getElementById('start-btn').addEventListener('click', startGame);
+document.getElementById('player-name').addEventListener('keydown', e => { if (e.key === 'Enter') startGame(); });
+document.getElementById('hint-btn').addEventListener('click', showHint);
+document.getElementById('shuffle-btn').addEventListener('click', () => { if (!animating && !gameOver) shuffleBoard(); });
+
+loadScores();
+</script>
+</body>
+</html>
